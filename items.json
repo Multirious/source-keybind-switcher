@@ -1,11 +1,14 @@
 {
-    "ammo": {
-        "Test": "test",
-        "Burger": "burger",
-        "Vege": "Vegetable"
-    },
-    "weapon.pistol": {
-        "bitch": "pussy",
-        "men": "dick"
-    }
+    "cfg": "item_shop",
+    "categories": {
+        "ammo": {
+            "Test": "test",
+            "Burger": "burger",
+            "Vege": "Vegetable"
+        },
+        "weapon.pistol": {
+            "bitch": "pussy",
+            "men": "dick"
+        }
+    } 
 }

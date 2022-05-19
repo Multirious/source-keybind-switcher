@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::hash::Hash;
 use std::path::Path;
 use std::fs::File;
 use std::io::{self, BufReader};
@@ -56,60 +58,80 @@ mod error {
     }
 }
 
-pub struct Item {
-    display: String,
-    id: String,
-}
+type ItemShopItems = HashMap<String, String>;
+type ItemShopCategories = HashMap<String, ItemShopItems>;
 
-impl Item {
-    pub fn new(display: String, id: String) -> Self {
-        Item { display, id }
+pub enum ProgramUiCfg {
+    ItemShop {
+        command: String,
+        categories: ItemShopCategories,
     }
 }
 
-pub struct Category {
-    name: String,
-    items: Vec<Item>,
-}
+impl ProgramUiCfg {
+    pub fn from_serde_value(cfg_string: &str, value: Value) -> Result<Self> {
+        match cfg_string {
+            "item_shop" => {
+                let command = match value["command"] {
+                    Value::String(s) => s,
+                    _ => return Err(Error::new(ErrorKind::JsonImportError, "".to_string())),
+                };
 
-impl Category {
-    pub fn new(name: String, items: Vec<Item>) -> Self {
-        Category { name, items }
+                // Just convert serde map to hashmap
+                // Maybe I should use .map()
+                let categories = match value["categories"] {
+                    Value::Object(o) => {
+                        let categories = ItemShopCategories::new();
+                        for (ctg_name, items) in o.into_iter() {
+                            let items_serde = match items {
+                                    Value::Object(o) => o,
+                                    _ => return Err(Error::new(ErrorKind::JsonImportError, "".to_string())),
+                            };
+
+                            let items = ItemShopItems::new();
+                            for (display, id) in items_serde.into_iter() {
+                                let id = match id {
+                                    Value::String(s) => s,
+                                    _ => return Err(Error::new(ErrorKind::JsonImportError, "".to_string())),
+                                };
+                                
+                                items.insert(display, id);
+                            }
+
+                            categories.insert(ctg_name, items);
+                        }
+
+                        categories
+                    },
+                    _ => return Err(Error::new(ErrorKind::JsonImportError, "".to_string())),
+                };
+                
+                Ok(ProgramUiCfg::ItemShop { command, categories })
+            } 
+        }
     }
 }
 
-pub struct ItemCategories {
-    categories: Vec<Category>,
+pub struct Program {
+    cfg: ProgramUiCfg,
 }
 
-impl ItemCategories {
-    pub fn new(categories: Vec<Category>) -> Self {
-        ItemCategories { categories }
+impl Program {
+    pub fn parse_serde_value(value: Value) -> Result<Self> {
+        let map = match value {
+            Value::Object(o) => o,
+            _ => return Err(Error::new(ErrorKind::JsonImportError, "".to_string())),
+        };
+
+        let cfg = match map["cfg"] {
+            Value::String(s) => s,
+            _ => return Err(Error::new(ErrorKind::JsonImportError, "".to_string())),
+        };
+
+        let pcfg = ProgramUiCfg::from_serde_value(cfg, value);
+
+        return Ok(())
     }
-}
-
-impl ItemCategories {
-    // pub fn from_serde_value(value: Value) -> Result<Self> {
-    //     let map = match value {
-    //         Value::Object(o) => o,
-    //         _ => return Err(Error::new(ErrorKind::JsonImportError, "".to_string())),
-    //     };
-        
-    //     let categories: Vec<Category>
-    //     for (i, (ctg_name, items)) in map.into_iter().enumerate() {
-    //         let items_o = match items {
-    //             Value::Object(o) => o,
-    //             _ => return Err(Error::new(ErrorKind::JsonImportError, "".to_string()))
-    //         };
-
-
-            
-    //         let ctg = Category::new(ctg_name, vec![]);
-    //         categories.push(ctg);
-    //     }
-
-    //     return Ok(())
-    // }
 }
 
 pub fn load_json<P: AsRef<Path>>(path: P) -> Result<Value> {
