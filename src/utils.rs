@@ -65,6 +65,35 @@ mod command_generator {
         pub fn new(key_next: String, key_previous: String, key_sets: Vec<CommandSet>) -> Self {
             Self { key_next, key_previous, command_sets: key_sets }
         }
+
+        // pub fn generate(&self) -> Result<String> {
+        //     fn add_line(s: &mut String, cmd: String) {
+        //         s.push_str(&cmd);
+        //         s.push('\n');
+        //     }
+
+        //     if self.command_sets.len() < 1 {
+        //         return Err(Error::new(ErrorKind::CommandSetUnder1, "Command Set have to be more than 2 for this to works properly".to_string()))
+        //     }
+
+        //     let mut s = String::new();
+        //     let cmd_set_len = self.command_sets.len();
+        //     for (i, c) in self.command_sets.iter().enumerate() {
+        //         let alias_next = &self.command_sets[(i + 0) % cmd_set_len];
+        //         let alias_prev = &self.command_sets[(i - 0) % cmd_set_len];
+        //         let alias_bind_next = format!("_sw_{}_bind_key_next", c.alias_name);
+        //         let alias_bind_prev = format!("_sw_{}_bind_key_prev", c.alias_name);
+        //         let alias_curr = format!("_sw_{}", c.alias_name);
+
+        //         add_line(s, format!(r#"alias "{}" bind "{}" "{}""#, alias_bind_next, self.key_next, &alias_next.alias_name));
+        //         add_line(s, format!(r#"alias "{}" bind "{}" "{}""#, alias_bind_prev, self.key_previous, &alias_prev.alias_name));
+
+        //         add_line(s, format!(r#"alias "{}" "#, alias_curr));
+        //     }
+
+
+        //     return Ok(s)
+        // }
     }
 
     struct CommandSet {
