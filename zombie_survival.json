@@ -1,0 +1,26 @@
+{
+    "command_ui_type": "buy_item",
+    "command": "zs_purchaseitems",
+    "arg_list": {
+        "ammo": {
+            "Pistol ammo box": "Pistolammobox",
+            "3 pistol ammo boxes": "3pistolammoboxes",
+            "5 pistol ammo boxes": "5pistolammoboxes",
+            "Shotgun ammo box": "Shotgunammobox",
+            "3 shotgun ammo boxes": "3shotgunammoboxes",
+            "5 shotgun ammo boxes": "5shotgunammoboxes",
+            "SMG ammo box": "SMGammobox",
+            "3 SMG ammo boxes": "3SMGammoboxes",
+            "5 SMG ammo boxes": "5SMGammoboxes",
+            "5.56mm ammo box": "556mmammobox",
+            "3 5.56mm ammo boxes": "3556mmammoboxes",
+            "5 5.56mm ammo boxes": "5556mmammoboxes",
+            "7.62mm ammo box": "762mmammobox",
+            "3 7.62mm ammo boxes": "3762mmammoboxes",
+            "5 7.62mm ammo boxes": "5762mmammoboxes",
+            "Pulse ammo box": "Pulseammobox",
+            "3 pulse ammo boxes": "3pulseammoboxes",
+            "5 pulse ammo boxes": "5pulseammoboxes"
+        }
+    }
+}

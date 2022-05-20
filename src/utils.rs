@@ -1,7 +1,8 @@
+use std::collections::HashMap;
 use std::path::Path;
 use std::fs::File;
 use std::io::{self, BufReader};
-use serde_json::{Value};
+use serde_json::{Value, Map};
 
 use error::*;
 
@@ -56,60 +57,52 @@ mod error {
     }
 }
 
-pub struct Item {
-    display: String,
-    id: String,
+/// Key is display name and value is the ID
+type ShopItemItems = HashMap<String, String>;
+/// Key is category name and key is Items
+type ShopItemArgList = HashMap<String, ShopItemItems>;
+
+pub enum CommandUIType {
+    ShopItem {
+        command: String,
+        arg_list: ShopItemArgList,
+    },
+}
+// zs_purchaseitems peashooter; zs_purchaseitems unhinger
+struct Program {
+    command_ui_type: CommandUIType,
 }
 
-impl Item {
-    pub fn new(display: String, id: String) -> Self {
-        Item { display, id }
-    }
-}
+impl Program {
+    pub fn parse<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let value = load_json(path);
 
-pub struct Category {
-    name: String,
-    items: Vec<Item>,
-}
-
-impl Category {
-    pub fn new(name: String, items: Vec<Item>) -> Self {
-        Category { name, items }
-    }
-}
-
-pub struct ItemCategories {
-    categories: Vec<Category>,
-}
-
-impl ItemCategories {
-    pub fn new(categories: Vec<Category>) -> Self {
-        ItemCategories { categories }
-    }
-}
-
-impl ItemCategories {
-    // pub fn from_serde_value(value: Value) -> Result<Self> {
-    //     let map = match value {
-    //         Value::Object(o) => o,
-    //         _ => return Err(Error::new(ErrorKind::JsonImportError, "".to_string())),
-    //     };
-        
-    //     let categories: Vec<Category>
-    //     for (i, (ctg_name, items)) in map.into_iter().enumerate() {
-    //         let items_o = match items {
-    //             Value::Object(o) => o,
-    //             _ => return Err(Error::new(ErrorKind::JsonImportError, "".to_string()))
-    //         };
-
-
+        let ctgs_serde_map = match value {
+            Value::Object(o) => o,
+            _ => return Err(Error::new(ErrorKind::JsonImportError, "".to_string())),
+        };
+    
+        let mut ctgs_hash_map = ShopItemArgList::new();
+        for (ctg_name, items) in ctgs_serde_map.into_iter() {
+            let items_serde_map =  match items {
+                Value::Object(o) => o,
+                _ => return Err(Error::new(ErrorKind::JsonImportError, "".to_string())),
+            };
             
-    //         let ctg = Category::new(ctg_name, vec![]);
-    //         categories.push(ctg);
-    //     }
-
-    //     return Ok(())
-    // }
+            let mut items_hash_map = ShopItemItems::new();
+            for (display, id) in items_serde_map.into_iter() {
+                let id = match id {
+                    Value::String(s) => s,
+                    _ => return Err(Error::new(ErrorKind::JsonImportError, "".to_string())),
+                };
+                items_hash_map.insert(display, id);
+            }
+    
+            ctgs_hash_map.insert(ctg_name, items_hash_map);
+        }
+    
+        return Ok(ctgs_hash_map)
+    }
 }
 
 pub fn load_json<P: AsRef<Path>>(path: P) -> Result<Value> {
