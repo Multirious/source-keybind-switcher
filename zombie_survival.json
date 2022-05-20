@@ -1,7 +1,7 @@
 {
-    "command_ui_type": "buy_item",
+    "cfg": "item_shop",
     "command": "zs_purchaseitems",
-    "arg_list": {
+    "categories": {
         "ammo": {
             "Pistol ammo box": "Pistolammobox",
             "3 pistol ammo boxes": "3pistolammoboxes",
