@@ -52,6 +52,110 @@ mod error {
     }
 }
 
+mod command_generator {
+    use super::error::*;
+
+    #[cfg(test)]
+    mod test {
+        use crate::utils::command_generator::{KeybindSwitcher, CommandSet};
+
+        #[test]
+        fn test() {
+            fn s(str: &str) -> String {
+                str.to_string()
+            }
+
+            let cmds = vec![
+                CommandSet::new(s("first"), s("third"), s("second"), vec![s("echo kill"), s("echo sex")]),
+                CommandSet::new(s("second"), s("first"), s("third"), vec![s("echo blowjob"), s("echo givehead")]),
+                CommandSet::new(s("third"), s("second"), s("first"), vec![s("echo drink"), s("echo eat")]),
+            ];
+
+            let kbsw = KeybindSwitcher::new(s("test"), s("pgup"), s("pgdn"), cmds);
+
+            let g = kbsw.generate().unwrap();
+
+            println!("{}", g);
+        }
+    }
+
+    struct KeybindSwitcher {
+        name: String,
+        key_next: String,
+        key_previous: String,
+        command_sets: Vec<CommandSet>
+    }
+
+    impl KeybindSwitcher {
+        pub fn new(name: String, key_next: String, key_previous: String, command_sets: Vec<CommandSet>) -> Self {
+            Self { name, key_next, key_previous, command_sets }
+        }
+
+        pub fn generate(&self) -> Result<String> {
+            fn add_line(s: &mut String, cmd: &str) {
+                s.push_str(cmd);
+                s.push('\n');
+            }
+
+            if self.command_sets.len() < 2 {
+                return Err(Error::new(ErrorKind::CommandSetUnder2, "Command Set have to be more than 2 for this to works properly".to_string()))
+            }
+
+            let mut switcher_init_cmd = String::new();
+            let mut s = String::new();
+            add_line(&mut s, &format!("//Keybind Switcher {}", self.name));
+            
+            for (i, cs) in self.command_sets.iter().enumerate() {
+                let alias_next = &cs.next_alias;
+                let alias_prev = &cs.previous_alias;
+                let alias_curr = format!("_sw_{}", cs.alias_name);
+                let alias_bind_next = format!("{}_bind_key_next", alias_curr);
+                let alias_bind_prev = format!("{}_bind_key_prev", alias_curr);
+
+                add_line(&mut s, &format!(r#"alias "{}" bind "{}" "_sw_{}""#, alias_bind_next, self.key_next, alias_next));
+                add_line(&mut s, &format!(r#"alias "{}" bind "{}" "_sw_{}""#, alias_bind_prev, self.key_previous, alias_prev));
+
+                add_line(&mut s, &format!(r#"alias "{}" "{};{};{}_cmds""#, alias_curr, alias_bind_next, alias_bind_prev, alias_curr));
+
+                let mut cmds = String::new();
+                cmds.push_str(&format!(r#"alias "{}_cmds" "echo Switched {}.{};"#, alias_curr, self.name, cs.alias_name));
+                
+                for (i, c) in cs.commands.iter().enumerate() {
+                    let name = format!("{}_cmd{}", alias_curr, i);
+                    add_line(&mut s, &format!(r#"alias "{}" {}"#, name, c));
+                    cmds.push_str(&name);
+                    cmds.push(';');
+                }
+                cmds.push('"');
+                add_line(&mut s, &cmds);
+                s.push('\n');
+
+                if i == 0 {
+                    switcher_init_cmd = alias_curr;
+                }
+            }
+
+            s.push_str(&switcher_init_cmd);
+            s.push('\n');
+
+            return Ok(s)
+        }
+    }
+
+    struct CommandSet {
+        alias_name: String,
+        previous_alias: String,
+        next_alias: String,
+        commands: Vec<String>,
+    }
+
+    impl CommandSet {
+        pub fn new(alias_name: String, previous_alias: String, next_alias: String, commands: Vec<String>) -> Self {
+            Self { alias_name, previous_alias, next_alias, commands }
+        }
+    }
+}
+
 mod program {
     use serde_json::Value;
     use std::collections::HashMap;
@@ -69,49 +173,50 @@ mod program {
     }
     
     impl ProgramUiCfg {
-        pub fn from_serde_value(cfg_string: &str, mut value: Value) -> Result<Self> {
+        pub fn from_serde_value(cfg_string: &str, value: Value) -> Result<Self> {
             match cfg_string {
-                "item_shop" => {
-                    let command = match value["command"].take() {
-                        Value::String(s) => s,
-                        _ => return Err(Error::new(ErrorKind::JsonImportError, "`command` have to be a string type".to_string())),
-                    };
-    
-                    // Just convert serde map to hashmap
-                    // Looks like shit I know
-                    // I already forgot what I have done here
-                    let categories = match value["categories"].take() {
-                        Value::Object(o) => {
-                            let mut categories = ItemShopCategories::new();
-                            for (ctg_name, items) in o.into_iter() {
-                                let items_serde = match items {
-                                        Value::Object(o) => o,
-                                        _ => return Err(Error::new(ErrorKind::JsonImportError, "value of `categories` object has to be an object type, called `items`".to_string())),
-                                };
-    
-                                let mut items = ItemShopItems::new();
-                                for (display, id) in items_serde.into_iter() {
-                                    let id = match id {
-                                        Value::String(s) => s,
-                                        _ => return Err(Error::new(ErrorKind::JsonImportError, "all of `items`'s value have to be a string type".to_string())),
-                                    };
-                                    
-                                    items.insert(display, id);
-                                }
-    
-                                categories.insert(ctg_name, items);
-                            }
-    
-                            categories
-                        },
-                        _ => return Err(Error::new(ErrorKind::JsonImportError, "`categories` has to be an object type".to_string())),
-                    };
-                    
-                    Ok(ProgramUiCfg::ItemShop { command, categories })
-                },
-    
+                "item_shop" => Self::parse_as_item_shop(value),
                 s => return Err(Error::new(ErrorKind::CfgTypeNotValid, format!("{} is not a valid cfg type", s))),
             }
+        }
+
+        pub fn parse_as_item_shop(mut value: Value) -> Result<Self> {
+            let command = match value["command"].take() {
+                Value::String(s) => s,
+                _ => return Err(Error::new(ErrorKind::JsonImportError, "`command` have to be a string type".to_string())),
+            };
+
+            // Just convert serde map to hashmap
+            // Looks like shit I know
+            // I already forgot what I have done here
+            let categories = match value["categories"].take() {
+                Value::Object(o) => {
+                    let mut categories = ItemShopCategories::new();
+                    for (ctg_name, items) in o.into_iter() {
+                        let items_serde = match items {
+                                Value::Object(o) => o,
+                                _ => return Err(Error::new(ErrorKind::JsonImportError, "value of `categories` object has to be an object type, called `items`".to_string())),
+                        };
+
+                        let mut items = ItemShopItems::new();
+                        for (display, id) in items_serde.into_iter() {
+                            let id = match id {
+                                Value::String(s) => s,
+                                _ => return Err(Error::new(ErrorKind::JsonImportError, "all of `items`'s value have to be a string type".to_string())),
+                            };
+                            
+                            items.insert(display, id);
+                        }
+
+                        categories.insert(ctg_name, items);
+                    }
+
+                    categories
+                },
+                _ => return Err(Error::new(ErrorKind::JsonImportError, "`categories` has to be an object type".to_string())),
+            };
+            
+            Ok(ProgramUiCfg::ItemShop { command, categories })
         }
     }
     
