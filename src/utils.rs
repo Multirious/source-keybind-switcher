@@ -1,8 +1,8 @@
-mod error {
+pub mod error {
     use std::result;
     use std::io;
 
-    use super::*;
+    use crate::utils::*;
     
     pub type Result<T> = result::Result<T, Error>;
 
@@ -10,9 +10,10 @@ mod error {
     pub enum ErrorKind {
         SerdeJson(serde_json::Error),
         IO(io::Error),
-        JsonImportError,
-        CfgTypeNotValid,
-        CommandSetUnder2,
+        JsonInvalidType,
+        UsageInvalid,
+        CommandSetLenUnder2,
+        FieldEmpty,
     }
     
     #[derive(Debug)]
@@ -52,13 +53,17 @@ mod error {
     }
 }
 
-mod command_generator {
-    use super::error::*;
+pub trait GenerateCommand {
+    fn generate(&self) -> error::Result<String>;
+}
+
+pub mod keybind_switcher {
+    use crate::utils::{error::{*, self}, GenerateCommand};
     use serde::{Serialize, Deserialize};
 
     #[cfg(test)]
     mod test {
-        use crate::utils::command_generator::{KeybindSwitcher, CommandSet};
+        use crate::utils::{keybind_switcher::{KeybindSwitcher, CommandSet}, GenerateCommand};
 
         #[test]
         fn test() {
@@ -92,39 +97,59 @@ mod command_generator {
         pub fn new(name: String, key_next: String, key_previous: String, command_sets: Vec<CommandSet>) -> Self {
             Self { name, key_next, key_previous, command_sets }
         }
-
-        pub fn generate(&self) -> Result<String> {
+    }
+    
+    impl GenerateCommand for KeybindSwitcher {
+        fn generate(&self) -> Result<String> {
             fn add_line(s: &mut String, cmd: &str) {
                 s.push_str(cmd);
                 s.push('\n');
             }
 
             if self.command_sets.len() < 2 {
-                return Err(Error::new(ErrorKind::CommandSetUnder2, "Command Set have to be more than 2 for this to works properly".to_string()))
+                return Err(Error::new(ErrorKind::CommandSetLenUnder2, "Command Set have to be more than 2 for this to works properly".to_string()))
             }
+            if self.name.is_empty() {
+                return Err(Error::new(ErrorKind::FieldEmpty, "KeybindSwitcher's name field is empty".to_string()))
+            }
+            if self.key_next.is_empty() {
+                return Err(Error::new(ErrorKind::FieldEmpty, "KeybindSwitcher's key_next field is empty".to_string()))
+            }
+            if self.key_previous.is_empty() {
+                return Err(Error::new(ErrorKind::FieldEmpty, "KeybindSwitcher's key_previous field is empty".to_string()))
+            }
+
 
             let mut switcher_init_cmd = String::new();
             let mut s = String::new();
             add_line(&mut s, &format!("//Keybind Switcher {}", self.name));
             
             for (i, cs) in self.command_sets.iter().enumerate() {
-                let alias_next = &cs.next_alias;
-                let alias_prev = &cs.previous_alias;
-                let alias_curr = format!("_sw_{}", cs.alias_name);
-                let alias_bind_next = format!("{}_bind_key_next", alias_curr);
-                let alias_bind_prev = format!("{}_bind_key_prev", alias_curr);
+                if cs.name.is_empty() {
+                    return Err(Error::new(ErrorKind::FieldEmpty, "CommandSet's name field is empty".to_string()))
+                }
+                if cs.next_set.is_empty() {
+                    return Err(Error::new(ErrorKind::FieldEmpty, "CommandSet's next_set field is empty".to_string()))
+                }
+                if cs.previous_set.is_empty() {
+                    return Err(Error::new(ErrorKind::FieldEmpty, "CommandSet's previous_set field is empty".to_string()))
+                }
+
+                let alias_next = &cs.next_set;
+                let alias_prev = &cs.previous_set;
+                let alias_curr = format!("_sw_{}", cs.name);
 
                 add_line(&mut s, &format!(r#"alias "{}" "bind {} _sw_{};bind {} _sw_{};{}_cmds""#,
                     alias_curr,
                     self.key_next,
                     alias_next,
-                    self.key_next,
-                    alias_next,
+                    self.key_previous,
+                    alias_prev,
                     alias_curr,
                 ));
 
                 let mut cmds = String::new();
-                cmds.push_str(&format!(r#"alias "{}_cmds" "echo Switched {}.{};"#, alias_curr, self.name, cs.alias_name));
+                cmds.push_str(&format!(r#"alias "{}_cmds" "echo Switched {}.{};"#, alias_curr, self.name, cs.name));
                 
                 for (i, c) in cs.commands.iter().enumerate() {
                     let name = format!("{}_cmd{}", alias_curr, i);
@@ -150,47 +175,77 @@ mod command_generator {
 
     #[derive(Serialize, Deserialize)]
     pub struct CommandSet {
-        alias_name: String,
-        previous_alias: String,
-        next_alias: String,
+        name: String,
+        previous_set: String,
+        next_set: String,
         commands: Vec<String>,
     }
 
     impl CommandSet {
-        pub fn new(alias_name: String, previous_alias: String, next_alias: String, commands: Vec<String>) -> Self {
-            Self { alias_name, previous_alias, next_alias, commands }
+        pub fn new(name: String, previous_alias: String, next_set: String, commands: Vec<String>) -> Self {
+            Self { name, previous_set: previous_alias, next_set, commands }
         }
     }
 }
 
-mod program {
+pub mod program {
     use serde_json::Value;
-    use std::collections::HashMap;
-    use super::error::*;
-
-    type ItemShopItems = HashMap<String, String>;
-    type ItemShopCategories = HashMap<String, ItemShopItems>;
+    use crate::utils::error::*;
     
-    #[derive(Debug)]
-    pub enum ProgramUiCfg {
-        ItemShop {
+    pub mod ItemShop {
+        use std::collections::HashMap;
+        use crate::utils::error::*;
+        use crate::utils::GenerateCommand;
+
+        pub type ItemShopItems = HashMap<String, String>;
+        pub type ItemShopCategories = HashMap<String, ItemShopItems>;
+
+        pub struct ItemShopCommand {
             command: String,
-            categories: ItemShopCategories,
+            item: String,
+        }
+
+        impl ItemShopCommand {
+            pub fn new(command: String, item: String) -> Self {
+                Self { command, item }
+            }
+        }
+        
+        impl GenerateCommand for ItemShopCommand {
+            fn generate(&self) -> Result<String> {
+                if self.command.is_empty() {
+                    return Err(Error::new(ErrorKind::FieldEmpty, "ItemShopCommand's command field is empty".to_string()))
+                }
+                if self.item.is_empty() {
+                    return Err(Error::new(ErrorKind::FieldEmpty, "ItemShopCommand's item field is empty".to_string()))
+                }
+                Ok(format!("{} {}", self.command, self.item))
+            }
         }
     }
     
-    impl ProgramUiCfg {
-        pub fn from_serde_value(cfg_string: &str, value: Value) -> Result<Self> {
-            match cfg_string {
+    #[derive(Debug)]
+    pub enum ProgramJsonUsage {
+        ItemShop {
+            command: String,
+            categories: ItemShop::ItemShopCategories,
+        }
+    }
+    
+    impl ProgramJsonUsage {
+        pub fn parse_serde_value(usage_string: &str, value: Value) -> Result<Self> {
+            match usage_string {
                 "item_shop" => Self::parse_as_item_shop(value),
-                s => return Err(Error::new(ErrorKind::CfgTypeNotValid, format!("{} is not a valid cfg type", s))),
+                s => return Err(Error::new(ErrorKind::UsageInvalid, format!("{} is not a valid usage", s))),
             }
         }
 
         pub fn parse_as_item_shop(mut value: Value) -> Result<Self> {
+            use ItemShop::*;
+
             let command = match value["command"].take() {
                 Value::String(s) => s,
-                _ => return Err(Error::new(ErrorKind::JsonImportError, "`command` have to be a string type".to_string())),
+                _ => return Err(Error::new(ErrorKind::JsonInvalidType, "`command` have to be a string type".to_string())),
             };
 
             // Just convert serde map to hashmap
@@ -202,14 +257,14 @@ mod program {
                     for (ctg_name, items) in o.into_iter() {
                         let items_serde = match items {
                                 Value::Object(o) => o,
-                                _ => return Err(Error::new(ErrorKind::JsonImportError, "value of `categories` object has to be an object type, called `items`".to_string())),
+                                _ => return Err(Error::new(ErrorKind::JsonInvalidType, "value of `categories` object has to be an object type, called `items`".to_string())),
                         };
 
                         let mut items = ItemShopItems::new();
                         for (display, id) in items_serde.into_iter() {
                             let id = match id {
                                 Value::String(s) => s,
-                                _ => return Err(Error::new(ErrorKind::JsonImportError, "all of `items`'s value have to be a string type".to_string())),
+                                _ => return Err(Error::new(ErrorKind::JsonInvalidType, "all of `items`'s value have to be a string type".to_string())),
                             };
                             
                             items.insert(display, id);
@@ -220,34 +275,34 @@ mod program {
 
                     categories
                 },
-                _ => return Err(Error::new(ErrorKind::JsonImportError, "`categories` has to be an object type".to_string())),
+                _ => return Err(Error::new(ErrorKind::JsonInvalidType, "`categories` has to be an object type".to_string())),
             };
             
-            Ok(ProgramUiCfg::ItemShop { command, categories })
+            Ok(ProgramJsonUsage::ItemShop { command, categories })
         }
     }
     
     #[derive(Debug)]
     pub struct Program {
-        cfg: ProgramUiCfg,
+        json_usage: ProgramJsonUsage,
     }
     
     impl Program {
         pub fn parse_serde_value(mut value: Value) -> Result<Self> {
             if !value.is_object() {
-                return Err(Error::new(ErrorKind::JsonImportError, "json file has to have object type first".to_string()))
+                return Err(Error::new(ErrorKind::JsonInvalidType, "json file has to have object type first".to_string()))
             }
             
     
-            let cfg = match value["cfg"].take() {
+            let usage = match value["usage"].take() {
                 Value::String(s) => s,
-                _ => return Err(Error::new(ErrorKind::JsonImportError, "".to_string())),
+                _ => return Err(Error::new(ErrorKind::JsonInvalidType, "".to_string())),
             };
     
-            let pcfg = ProgramUiCfg::from_serde_value(&cfg, value);
+            let pusage = ProgramJsonUsage::parse_serde_value(&usage, value);
     
-            return match pcfg {
-                Ok(o) => Ok(Program { cfg: o }),
+            return match pusage {
+                Ok(o) => Ok(Program { json_usage: o }),
                 Err(e) => Err(e),
             }
         }
@@ -263,10 +318,10 @@ mod data{
     use std::fs::File;
     use std::io::BufReader;
     use serde_json::Value;
-    use super::error::*;
-    use super::command_generator::KeybindSwitcher;
+    use crate::utils::error::*;
+    use crate::utils::keybind_switcher::KeybindSwitcher;
 
-    pub fn import_json_cfg<P: AsRef<Path>>(path: P) -> Result<Value> {
+    pub fn import_json<P: AsRef<Path>>(path: P) -> Result<Value> {
         let file = File::open(path)?;
         let reader = BufReader::new(file);
     

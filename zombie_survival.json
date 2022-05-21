@@ -1,5 +1,5 @@
 {
-    "cfg": "item_shop",
+    "usage": "item_shop",
     "command": "zs_purchaseitems",
     "categories": {
         "ammo": {

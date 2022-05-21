@@ -2,7 +2,7 @@ mod utils;
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use crate::utils::*;
 }
 
 fn main() {
