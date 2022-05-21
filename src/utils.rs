@@ -54,6 +54,7 @@ mod error {
 
 mod command_generator {
     use super::error::*;
+    use serde::{Serialize, Deserialize};
 
     #[cfg(test)]
     mod test {
@@ -79,7 +80,8 @@ mod command_generator {
         }
     }
 
-    struct KeybindSwitcher {
+    #[derive(Serialize, Deserialize)]
+    pub struct KeybindSwitcher {
         name: String,
         key_next: String,
         key_previous: String,
@@ -112,10 +114,14 @@ mod command_generator {
                 let alias_bind_next = format!("{}_bind_key_next", alias_curr);
                 let alias_bind_prev = format!("{}_bind_key_prev", alias_curr);
 
-                add_line(&mut s, &format!(r#"alias "{}" bind "{}" "_sw_{}""#, alias_bind_next, self.key_next, alias_next));
-                add_line(&mut s, &format!(r#"alias "{}" bind "{}" "_sw_{}""#, alias_bind_prev, self.key_previous, alias_prev));
-
-                add_line(&mut s, &format!(r#"alias "{}" "{};{};{}_cmds""#, alias_curr, alias_bind_next, alias_bind_prev, alias_curr));
+                add_line(&mut s, &format!(r#"alias "{}" "bind {} _sw_{};bind {} _sw_{};{}_cmds""#,
+                    alias_curr,
+                    self.key_next,
+                    alias_next,
+                    self.key_next,
+                    alias_next,
+                    alias_curr,
+                ));
 
                 let mut cmds = String::new();
                 cmds.push_str(&format!(r#"alias "{}_cmds" "echo Switched {}.{};"#, alias_curr, self.name, cs.alias_name));
@@ -142,7 +148,8 @@ mod command_generator {
         }
     }
 
-    struct CommandSet {
+    #[derive(Serialize, Deserialize)]
+    pub struct CommandSet {
         alias_name: String,
         previous_alias: String,
         next_alias: String,
@@ -257,13 +264,22 @@ mod data{
     use std::io::BufReader;
     use serde_json::Value;
     use super::error::*;
+    use super::command_generator::KeybindSwitcher;
 
-    pub fn load_json<P: AsRef<Path>>(path: P) -> Result<Value> {
+    pub fn import_json_cfg<P: AsRef<Path>>(path: P) -> Result<Value> {
         let file = File::open(path)?;
         let reader = BufReader::new(file);
     
         let val = serde_json::from_reader::<BufReader<File>, Value>(reader)?;
     
         Ok(val)
+    }
+
+    pub fn export_switcher<P: AsRef<Path>>(path: P, kbsw: KeybindSwitcher) -> Result<()> {
+        todo!()
+    }
+
+    pub fn import_switcher<P: AsRef<Path>>(path: P) -> Result<KeybindSwitcher> {
+        todo!() 
     }
 }
