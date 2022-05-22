@@ -201,13 +201,14 @@ pub mod program {
         pub type ItemShopCategories = HashMap<String, ItemShopItems>;
 
         pub struct ItemShopCommand {
+            key: String,
             command: String,
             item: String,
         }
 
         impl ItemShopCommand {
-            pub fn new(command: String, item: String) -> Self {
-                Self { command, item }
+            pub fn new(key: String, command: String, item: String) -> Self {
+                Self { key, command, item }
             }
         }
         
@@ -219,7 +220,10 @@ pub mod program {
                 if self.item.is_empty() {
                     return Err(Error::new(ErrorKind::FieldEmpty, "ItemShopCommand's item field is empty".to_string()))
                 }
-                Ok(format!("{} {}", self.command, self.item))
+                if self.key.is_empty() {
+                    return Err(Error::new(ErrorKind::FieldEmpty, "ItemShopCommand's key field is empty".to_string()))
+                }
+                Ok(format!(r#"bind {} {} {}"#, self.key, self.command, self.item))
             }
         }
     }
