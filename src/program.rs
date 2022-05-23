@@ -1,7 +1,7 @@
 use serde_json::Value;
 use crate::error::*;
 
-pub mod ItemShop {
+pub mod item_shop {
     use std::collections::HashMap;
     use crate::error::*;
     use crate::GenerateCommand;
@@ -24,13 +24,13 @@ pub mod ItemShop {
     impl GenerateCommand for ItemShopCommand {
         fn generate(&self) -> Result<String> {
             if self.command.is_empty() {
-                return Err(Error::new(ErrorKind::FieldEmpty, "ItemShopCommand's command field is empty".to_string()))
+                return Err(ErrorKind::FieldEmpty.msg("ItemShopCommand's command field is empty".to_string()))
             }
             if self.item.is_empty() {
-                return Err(Error::new(ErrorKind::FieldEmpty, "ItemShopCommand's item field is empty".to_string()))
+                return Err(ErrorKind::FieldEmpty.msg("ItemShopCommand's item field is empty".to_string()))
             }
             if self.key.is_empty() {
-                return Err(Error::new(ErrorKind::FieldEmpty, "ItemShopCommand's key field is empty".to_string()))
+                return Err(ErrorKind::FieldEmpty.msg("ItemShopCommand's key field is empty".to_string()))
             }
             Ok(format!(r#"bind {} {} {}"#, self.key, self.command, self.item))
         }
@@ -41,7 +41,7 @@ pub mod ItemShop {
 pub enum ProgramJsonUsage {
     ItemShop {
         command: String,
-        categories: ItemShop::ItemShopCategories,
+        categories: item_shop::ItemShopCategories,
     }
 }
 
@@ -54,7 +54,7 @@ impl ProgramJsonUsage {
     }
 
     pub fn parse_as_item_shop(mut value: Value) -> Result<Self> {
-        use ItemShop::*;
+        use item_shop::*;
 
         let command = match value["command"].take() {
             Value::String(s) => s,

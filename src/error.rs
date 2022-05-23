@@ -14,8 +14,8 @@ pub enum ErrorKind {
 }
 
 impl ErrorKind {
-    pub fn msg(self, msg: String) -> Error {
-        Error::new(self, msg)
+    pub fn msg<S: Into<String>>(self, msg: S) -> Error {
+        Error::new(self, msg.into())
     }
 }
 
