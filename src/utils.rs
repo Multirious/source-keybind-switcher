@@ -255,32 +255,30 @@ pub mod program {
             // Just convert serde map to hashmap
             // Looks like shit I know
             // I already forgot what I have done here
-            let categories = match value["categories"].take() {
-                Value::Object(o) => {
-                    let mut categories = ItemShopCategories::new();
-                    for (ctg_name, items) in o.into_iter() {
-                        let items_serde = match items {
-                                Value::Object(o) => o,
-                                _ => return Err(Error::new(ErrorKind::JsonInvalidType, "value of `categories` object has to be an object type, called `items`".to_string())),
-                        };
-
-                        let mut items = ItemShopItems::new();
-                        for (display, id) in items_serde.into_iter() {
-                            let id = match id {
-                                Value::String(s) => s,
-                                _ => return Err(Error::new(ErrorKind::JsonInvalidType, "all of `items`'s value have to be a string type".to_string())),
-                            };
-                            
-                            items.insert(display, id);
-                        }
-
-                        categories.insert(ctg_name, items);
-                    }
-
-                    categories
-                },
+            let categories_serde = match value["categories"].take() {
+                Value::Object(o) => o,
                 _ => return Err(Error::new(ErrorKind::JsonInvalidType, "`categories` has to be an object type".to_string())),
             };
+
+            let mut categories = ItemShopCategories::new();
+            for (ctg_name, items) in categories_serde.into_iter() {
+                let items_serde = match items {
+                        Value::Object(o) => o,
+                        _ => return Err(Error::new(ErrorKind::JsonInvalidType, "value of `categories` object has to be an object type, called `items`".to_string())),
+                };
+
+                let mut items = ItemShopItems::new();
+                for (display, id) in items_serde.into_iter() {
+                    let id = match id {
+                        Value::String(s) => s,
+                        _ => return Err(Error::new(ErrorKind::JsonInvalidType, "all of `items`'s value have to be a string type".to_string())),
+                    };
+                    
+                    items.insert(display, id);
+                }
+
+                categories.insert(ctg_name, items);
+            }
             
             Ok(ProgramJsonUsage::ItemShop { command, categories })
         }
