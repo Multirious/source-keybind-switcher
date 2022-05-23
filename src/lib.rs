@@ -1,8 +1,6 @@
 pub mod error {
     use std::result;
     use std::io;
-
-    use crate::utils::*;
     
     pub type Result<T> = result::Result<T, Error>;
 
@@ -58,12 +56,12 @@ pub trait GenerateCommand {
 }
 
 pub mod keybind_switcher {
-    use crate::utils::{error::{*, self}, GenerateCommand};
+    use crate::{error::*, GenerateCommand};
     use serde::{Serialize, Deserialize};
 
     #[cfg(test)]
     mod test {
-        use crate::utils::{keybind_switcher::{KeybindSwitcher, CommandSet}, GenerateCommand};
+        use crate::{keybind_switcher::{KeybindSwitcher, CommandSet}, GenerateCommand};
 
         #[test]
         fn test() {
@@ -190,12 +188,12 @@ pub mod keybind_switcher {
 
 pub mod program {
     use serde_json::Value;
-    use crate::utils::error::*;
+    use crate::error::*;
     
     pub mod ItemShop {
         use std::collections::HashMap;
-        use crate::utils::error::*;
-        use crate::utils::GenerateCommand;
+        use crate::error::*;
+        use crate::GenerateCommand;
 
         pub type ItemShopItems = HashMap<String, String>;
         pub type ItemShopCategories = HashMap<String, ItemShopItems>;
@@ -320,8 +318,8 @@ mod data{
     use std::fs::File;
     use std::io::BufReader;
     use serde_json::Value;
-    use crate::utils::error::*;
-    use crate::utils::keybind_switcher::KeybindSwitcher;
+    use crate::error::*;
+    use crate::keybind_switcher::KeybindSwitcher;
 
     pub fn import_json<P: AsRef<Path>>(path: P) -> Result<Value> {
         let file = File::open(path)?;
