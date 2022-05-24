@@ -46,7 +46,26 @@ pub enum ProgramJsonUsage {
 }
 
 impl ProgramJsonUsage {
-    pub fn parse_serde_value(usage_string: &str, value: Value) -> Result<Self> {
+    pub fn parse_serde_value(mut value: Value) -> Result<Self> {
+        if !value.is_object() {
+            return Err(ErrorKind::JsonInvalidType.msg("json file has to have object type first".to_string()))
+        }
+        
+
+        let usage = match value["usage"].take() {
+            Value::String(s) => s,
+            _ => return Err(ErrorKind::JsonInvalidType.msg("".to_string())),
+        };
+
+        let pusage = ProgramJsonUsage::parse_serde_value(&usage, value);
+
+        return match pusage {
+            Ok(o) => Ok(Program { json_usage: o }),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn parse_enums(usage_string: &str, value: Value) -> Result<Self> {
         match usage_string {
             "item_shop" => Self::parse_as_item_shop(value),
             s => return Err(ErrorKind::UsageInvalid.msg(format!("{} is not a valid usage", s))),
@@ -93,32 +112,6 @@ impl ProgramJsonUsage {
     }
 }
 
-#[derive(Debug)]
-pub struct Program {
-    json_usage: ProgramJsonUsage,
-}
-
-impl Program {
-    pub fn parse_serde_value(mut value: Value) -> Result<Self> {
-        if !value.is_object() {
-            return Err(ErrorKind::JsonInvalidType.msg("json file has to have object type first".to_string()))
-        }
-        
-
-        let usage = match value["usage"].take() {
-            Value::String(s) => s,
-            _ => return Err(ErrorKind::JsonInvalidType.msg("".to_string())),
-        };
-
-        let pusage = ProgramJsonUsage::parse_serde_value(&usage, value);
-
-        return match pusage {
-            Ok(o) => Ok(Program { json_usage: o }),
-            Err(e) => Err(e),
-        }
-    }
-
-    pub fn item_shop_generate(&self) -> String {
-        todo!()
-    }
+pub fn item_shop_generate(&self) -> String {
+    todo!()
 }
