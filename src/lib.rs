@@ -4,7 +4,7 @@ pub mod program;
 pub mod data;
 mod ui;
 
-/// Struct that can generate source command
+/// Trait for things that can generated source command
 pub trait GenerateCommand {
     fn generate(&self) -> error::Result<String>;
 }
