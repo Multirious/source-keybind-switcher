@@ -1,14 +1,15 @@
-use 
 use eframe::egui;
 
-fn main() {
+use crate::program::JsonUsage;
+
+pub fn launch() {
     let native_options = eframe::NativeOptions::default();
-    eframe::run_native("My egui App", native_options, Box::new(|cc| Box::new(Program::new(cc))));
+    eframe::run_native("Source Keybind Switcher", native_options, Box::new(|cc| Box::new(Program::new(cc))));
 }
 
 #[derive(Debug, Default)]
 pub struct Program {
-    json_usage: ProgramJsonUsage,
+    json_usage: JsonUsage,
 }
 
 impl Program {

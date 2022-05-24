@@ -38,14 +38,21 @@ pub mod item_shop {
 }
 
 #[derive(Debug)]
-pub enum ProgramJsonUsage {
+pub enum JsonUsage {
+    None,
     ItemShop {
         command: String,
         categories: item_shop::ItemShopCategories,
     }
 }
 
-impl ProgramJsonUsage {
+impl Default for JsonUsage {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
+impl JsonUsage {
     pub fn parse_serde_value(mut value: Value) -> Result<Self> {
         if !value.is_object() {
             return Err(ErrorKind::JsonInvalidType.msg("json file has to have object type first".to_string()))
@@ -57,10 +64,10 @@ impl ProgramJsonUsage {
             _ => return Err(ErrorKind::JsonInvalidType.msg("".to_string())),
         };
 
-        let pusage = ProgramJsonUsage::parse_serde_value(&usage, value);
+        let pusage = JsonUsage::parse_enums(&usage, value);
 
         return match pusage {
-            Ok(o) => Ok(Program { json_usage: o }),
+            Ok(o) => Ok(o),
             Err(e) => Err(e),
         }
     }
@@ -108,10 +115,6 @@ impl ProgramJsonUsage {
             categories.insert(ctg_name, items);
         }
         
-        Ok(ProgramJsonUsage::ItemShop { command, categories })
+        Ok(JsonUsage::ItemShop { command, categories })
     }
-}
-
-pub fn item_shop_generate(&self) -> String {
-    todo!()
 }
