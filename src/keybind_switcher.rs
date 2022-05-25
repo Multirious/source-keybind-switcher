@@ -1,9 +1,11 @@
+use std::ops::Rem;
+
 use crate::{error::*, GenerateCommand};
 use serde::{Serialize, Deserialize};
 
 #[cfg(test)]
 mod test {
-    use crate::{keybind_switcher::{KeybindSwitcher, CommandSet}, GenerateCommand};
+    use crate::{keybind_switcher::{KeybindSwitcher, CommandSet, CommandBind}, GenerateCommand};
 
     #[test]
     fn test() {
@@ -12,9 +14,9 @@ mod test {
         }
 
         let cmds = vec![
-            CommandSet::new(s("first"), s("third"), s("second"), vec![s("echo kill"), s("echo sex")]),
-            CommandSet::new(s("second"), s("first"), s("third"), vec![s("echo blowjob"), s("echo givehead")]),
-            CommandSet::new(s("third"), s("second"), s("first"), vec![s("echo drink"), s("echo eat")]),
+            CommandSet::new(s("first"), s("third"), s("second"), vec![CommandBind::new(s("a"), s("echo kill")), CommandBind::new(s("s"), s("echo sex"))]),
+            CommandSet::new(s("second"), s("first"), s("third"), vec![CommandBind::new(s("a"), s("echo blowjob")), CommandBind::new(s("a"), s("echo givehead"))]),
+            CommandSet::new(s("third"), s("second"), s("first"), vec![CommandBind::new(s("a"), s("echo drink)")), CommandBind::new(s("a"), s("echo eat"))]),
         ];
 
         let kbsw = KeybindSwitcher::new(s("test"), s("pgup"), s("pgdn"), cmds);
@@ -36,6 +38,21 @@ pub struct KeybindSwitcher {
 impl KeybindSwitcher {
     pub fn new(name: String, key_next: String, key_previous: String, command_sets: Vec<CommandSet>) -> Self {
         Self { name, key_next, key_previous, command_sets }
+    }
+
+    pub fn index_command_sets_by_index(&mut self) {
+        let len = self.command_sets.len() as i32;
+        for i in 0..len {
+            let prev_idx = (i - 1).rem_euclid(len);
+            let next_idx = (i + 1).rem_euclid(len);
+
+            let prev_set = self.command_sets[prev_idx as usize].name.clone();
+            let next_set = self.command_sets[next_idx as usize].name.clone();
+
+            let c = &mut self.command_sets[i as usize];
+            c.previous_set = prev_set;
+            c.next_set = next_set;
+        }            
     }
 }
 
@@ -91,9 +108,9 @@ impl GenerateCommand for KeybindSwitcher {
             let mut cmds = String::new();
             cmds.push_str(&format!(r#"alias "{}_cmds" "echo Switched {}.{};"#, alias_curr, self.name, cs.name));
             
-            for (i, c) in cs.commands.iter().enumerate() {
+            for (i, c) in cs.command_binds.iter().enumerate() {
                 let name = format!("{}_cmd{}", alias_curr, i);
-                add_line(&mut s, &format!(r#"alias "{}" {}"#, name, c));
+                add_line(&mut s, &format!(r#"alias "{}" {}"#, name, c.generate()?));
                 cmds.push_str(&name);
                 cmds.push(';');
             }
@@ -114,15 +131,40 @@ impl GenerateCommand for KeybindSwitcher {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct CommandBind {
+    key: String,
+    command: String,
+}
+
+impl CommandBind {
+    pub fn new(key: String, command: String) -> Self {
+        Self { key, command }
+    }
+}
+
+impl GenerateCommand for CommandBind {
+    fn generate(&self) -> Result<String> {
+        if self.key.is_empty() {
+            return Err(Error::new(ErrorKind::FieldEmpty, "CommandBind's key field is empty".to_string()))
+        }
+        if self.command.is_empty() {
+            return Err(Error::new(ErrorKind::FieldEmpty, "CommandBind's command field is empty".to_string()))
+        }
+        
+        Ok(format!("bind {} {}", self.key, self.command))
+    }
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct CommandSet {
     name: String,
     previous_set: String,
     next_set: String,
-    commands: Vec<String>,
+    command_binds: Vec<CommandBind>,
 }
 
 impl CommandSet {
-    pub fn new(name: String, previous_alias: String, next_set: String, commands: Vec<String>) -> Self {
-        Self { name, previous_set: previous_alias, next_set, commands }
+    pub fn new(name: String, previous_set: String, next_set: String, command_binds: Vec<CommandBind>) -> Self {
+        Self { name, previous_set, next_set, command_binds }
     }
 }

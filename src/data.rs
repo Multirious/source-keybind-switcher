@@ -27,7 +27,7 @@ pub fn export_switcher<P: AsRef<Path>>(path: P, kbsw: KeybindSwitcher) -> Result
     }
 }
 
-pub fn import_switche<P: AsRef<Path>>(path: P) -> Result<KeybindSwitcher> {
+pub fn import_switcher<P: AsRef<Path>>(path: P) -> Result<KeybindSwitcher> {
     let file = File::open(path)?;
     let reader = BufReader::new(file);
     let kbsw = serde_json::from_reader(reader)?;

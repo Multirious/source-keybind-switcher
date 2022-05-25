@@ -1,5 +1,5 @@
 use source_keybind_switcher as skw;
-use skw::ui::launch;
+use skw::gui::launch;
 
 fn main() {
     launch()
