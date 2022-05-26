@@ -1,5 +1,5 @@
 use eframe::egui;
-use crate::json_usage::JsonUsage;
+use crate::{json_usage::JsonUsage, keybind_switcher::{KeybindSwitcher, CommandSet}};
 
 pub fn launch() {
     let native_options = eframe::NativeOptions::default();
@@ -9,6 +9,8 @@ pub fn launch() {
 #[derive(Debug, Default)]
 pub struct GUI {
     json_usage: JsonUsage,
+    switcher: KeybindSwitcher,
+    set_index_editing: Option<usize>,
 }
 
 impl GUI {
@@ -23,14 +25,12 @@ impl GUI {
 
 impl eframe::App for GUI {
    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        // egui::CentralPanel::default().show(ctx, |ui| {
-        //     egui::Frame::none()
-        //         .rounding(egui::Rounding::from(5.0))
-        //         .stroke(egui::Stroke::new(2.0, egui::Color32::BLACK))
-        //         .inner_margin(egui::style::Margin::same(250.0))
-        //         .show(ui, |ui| {
-        //             panel
-        //         });
-        // });
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.label("Switcher");
+            ui.text_edit_singleline(&mut self.switcher.name);
+
+            ui.label("Set Name");
+            ui.text_edit_singleline(&mut self.switcher.);
+        });
    }
 }

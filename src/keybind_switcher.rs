@@ -1,5 +1,3 @@
-use std::ops::Rem;
-
 use crate::{error::*, GenerateCommand};
 use serde::{Serialize, Deserialize};
 
@@ -27,12 +25,12 @@ mod test {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct KeybindSwitcher {
-    name: String,
-    key_next: String,
-    key_previous: String,
-    command_sets: Vec<CommandSet>
+    pub name: String,
+    pub key_next: String,
+    pub key_previous: String,
+    pub command_sets: Vec<CommandSet>
 }
 
 impl KeybindSwitcher {
@@ -53,6 +51,12 @@ impl KeybindSwitcher {
             c.previous_set = prev_set;
             c.next_set = next_set;
         }            
+    }
+}
+
+impl Default for KeybindSwitcher {
+    fn default() -> Self {
+        Self { name: Default::default(), key_next: Default::default(), key_previous: Default::default(), command_sets: Default::default() }
     }
 }
 
@@ -130,15 +134,21 @@ impl GenerateCommand for KeybindSwitcher {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CommandBind {
-    key: String,
-    command: String,
+    pub key: String,
+    pub command: String,
 }
 
 impl CommandBind {
     pub fn new(key: String, command: String) -> Self {
         Self { key, command }
+    }
+}
+
+impl Default for CommandBind {
+    fn default() -> Self {
+        Self { key: Default::default(), command: Default::default() }
     }
 }
 
@@ -155,16 +165,22 @@ impl GenerateCommand for CommandBind {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CommandSet {
-    name: String,
-    previous_set: String,
-    next_set: String,
-    command_binds: Vec<CommandBind>,
+    pub name: String,
+    pub previous_set: String,
+    pub next_set: String,
+    pub command_binds: Vec<CommandBind>,
 }
 
 impl CommandSet {
     pub fn new(name: String, previous_set: String, next_set: String, command_binds: Vec<CommandBind>) -> Self {
         Self { name, previous_set, next_set, command_binds }
+    }
+}
+
+impl Default for CommandSet {
+    fn default() -> Self {
+        Self { name: Default::default(), previous_set: Default::default(), next_set: Default::default(), command_binds: Default::default() }
     }
 }
