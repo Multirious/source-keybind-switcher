@@ -30,7 +30,16 @@ impl eframe::App for GUI {
             ui.text_edit_singleline(&mut self.switcher.name);
 
             ui.label("Set Name");
-            ui.text_edit_singleline(&mut self.switcher.);
+            match self.set_index_editing {
+                Some(i) => ui.add_enabled_ui(true, |ui| {
+                    ui.text_edit_singleline(&mut self.switcher.command_sets[i].name);
+                }),
+                None => ui.add_enabled_ui(false, |ui| {
+                    ui.text_edit_singleline(&mut "No command set selected");
+                }),
+            };
+
+            // ui.text_edit_singleline(&mut self.switcher.);
         });
    }
 }
